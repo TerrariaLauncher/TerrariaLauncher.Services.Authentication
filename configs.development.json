@@ -1,0 +1,23 @@
+{
+    "env": "development",
+    "gRpc": {
+        "server": {
+            "host": "localhost",
+            "port": 3101
+        },
+        "tShockPlugins": {
+            "tShockManagement": {
+                "host": "localhost",
+                "port": 3200
+            }
+        }
+    },
+    "database": {
+        "host": "localhost",
+        "port": 3306,
+        "name": "terraria_launcher",
+        "userName": "launcher",
+        "password": "Th3B3stP@ssw0rd3v3r"
+    },
+    "accessTokenSecret": "S3cret_#"
+}

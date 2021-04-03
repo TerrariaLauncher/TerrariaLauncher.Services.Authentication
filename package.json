@@ -1,0 +1,32 @@
+{
+  "name": "terraria-launcher.services.authentication",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "npm run start:development",
+    "start:development": "cross-env NODE_ENV=development node --preserve-symlinks ./src/app.js",
+    "start:production": "cross-env NODE_ENV=production node --preserve-symlinks ./src/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "proto": "npx grpc_tools_node_protoc --proto_path=../TerrariaLauncher.Protos --js_out=import_style=commonjs,binary:./src/grpc/static-codegen --grpc_out=grpc_js:./src/grpc/static-codegen ../TerrariaLauncher.Protos/services/authentication/authentication.proto"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.2.12",
+    "@grpc/proto-loader": "^0.5.6",
+    "bcrypt": "^5.0.1",
+    "convict": "^6.0.1",
+    "jsonwebtoken": "^8.5.1",
+    "mysql2": "^2.2.5",
+    "terraria-launcher.commons": "file:../TerrariaLauncher.Commons",
+    "terraria-launcher.protos": "file:../TerrariaLauncher.Protos",
+    "winston": "^3.3.3"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "grpc-tools": "^1.11.1"
+  }
+}
