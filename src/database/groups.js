@@ -1,4 +1,5 @@
 import pool from './pool.js';
+import * as commons from 'terraria-launcher.commons';
 
 export const BASIC_GROUP_IDS = Object.freeze({
     registered: 1,
@@ -36,6 +37,10 @@ export async function getGroupByName(name) {
  * @returns {Promise<Group>} group
  */
 export async function getGroupById(id) {
-    const [groups] = await pool.execute('SELECT * FROM groups WHERE id = ?', [id]);
+    try {
+        const [groups] = await pool.execute('SELECT * FROM `groups` WHERE id = ?', [id]);
     return groups[0] ?? null;
+    } catch (error) {
+        throw commons.database.utils.createDatabaseError(error);
+    }
 }

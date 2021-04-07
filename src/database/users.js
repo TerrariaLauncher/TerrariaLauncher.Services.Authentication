@@ -1,4 +1,5 @@
 import pool from './pool.js';
+import * as commons from 'terraria-launcher.commons';
 
 /**
  * @typedef {Object} UserEntity
@@ -17,11 +18,15 @@ import pool from './pool.js';
  */
 
 async function getUser(uniqueField, value) {
-    const [users] = await pool.query('SELECT * FROM users WHERE ?? = ?', [uniqueField, value]);
-    if (Array.isArray(users) && users.length > 0) {
-        return results[0];
+    try {
+        const [users] = await pool.query('SELECT * FROM `users` WHERE ?? = ?', [uniqueField, value]);
+        if (Array.isArray(users) && users.length > 0) {
+            return users[0];
+        }
+        return null;
+    } catch (error) {
+        throw commons.database.utils.createDatabaseError(error);
     }
-    return null;
 }
 
 /**
@@ -46,6 +51,10 @@ export function getUserByEmail(email) {
     return getUser('email', email);
 }
 
+export function getUserByRefreshToken(refreshToken) {
+    return getUser('refreshToken', refreshToken);
+}
+
 /**
  * 
  * @param {number} id 
@@ -54,11 +63,14 @@ export function getUserByEmail(email) {
  * @param {string | undefined} values.email
  */
 export async function updateUserById(id, values) {
-    const [result] = await pool.query('UPDATE users SET ? WHERE id = ?',
-        [values, id]
-    );
-
-    return result.affectedRows > 0;
+    try {
+        const [result] = await pool.query('UPDATE users SET ? WHERE id = ?',
+            [values, id]
+        );
+        return result.affectedRows > 0;
+    } catch (error) {
+        throw commons.database.utils.createDatabaseError(error);
+    }
 }
 
 /**
@@ -67,6 +79,10 @@ export async function updateUserById(id, values) {
  * @returns {Promise<UserEntity>}
  */
 export async function createUser(payload) {
-    const [result] = await pool.query('INSET INTO users SET ?', [payload]);
-    return await getUserById(result.insertId);
+    try {
+        const [result] = await pool.query('INSERT INTO users SET ?', [payload]);
+        return await getUserById(result.insertId);
+    } catch (error) {
+        throw commons.database.utils.createDatabaseError(error);
+    }
 }

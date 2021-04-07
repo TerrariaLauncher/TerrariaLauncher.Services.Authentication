@@ -1,62 +1,11 @@
 import * as database from '../database/index.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import configs from '../../configs/index.js';
+import configs from '../configs/index.js';
+import { randomBytes } from 'crypto';
+import * as commons from 'terraria-launcher.commons';
 
-/**
- * @typedef {import('../database/index.js').users.UserEntity & {
- * group: string
- * }} UserModel
- */
-
-/**
- * 
- * @param {import('../database/index.js').users.UserEntity} user 
- * @returns {UserModel}
- */
-async function createUserModel(user) {
-    const group = await database.groups.getGroupById(user.groupId);
-    user['group'] = group.name;
-    return user;
-}
-
-async function getUserById(id) {
-    const user = await database.users.getUserById(id);
-    return await createUserModel(user);
-}
-
-async function getUserByName(name) {
-    const user = await database.users.getUserByName(name);
-    return await createUserModel(user);
-}
-
-async function getUserByEmail(email) {
-    const user = await database.users.getUserByEmail(email);
-    return await createUserModel(user);
-}
-
-/**
- * 
- * @param {object} payload
- * @param {string} payload.name
- * @param {string} payload.password
- * @param {string} payload.email
- */
-export async function createUser(payload) {
-    const hashedPassword = await bcrypt.hash(payload.password, 12);
-    const userEntity = await database.users.createUser({
-        name: payload.name,
-        password: hashedPassword,
-        groupId: database.groups.BASIC_GROUP_IDS.registered,
-        email: payload.email
-    });
-    return await createUserModel(userEntity);
-}
-
-function isEmail(email) {
-    const emailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    return emailRegex.test(email);
-}
+const ACCESS_TOKEN_SECRET = configs.get('accessTokenSecret');
 
 export class PasswordMismatchException extends Error {
     constructor(message) {
@@ -68,7 +17,7 @@ export class PasswordMismatchException extends Error {
     }
 }
 
-export class RefreshTokenMismatchException extends Error {
+export class InvalidRefreshTokenException extends Error {
     constructor(message) {
         super(message);
 
@@ -78,7 +27,11 @@ export class RefreshTokenMismatchException extends Error {
     }
 }
 
-const ACCESS_TOKEN_SECRET = configs.get('accessTokenSecret');
+function isEmail(email) {
+    const emailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return emailRegex.test(email);
+}
+
 /**
  * 
  * @param {object} payload
@@ -118,6 +71,61 @@ function generateRefreshToken() {
 }
 
 /**
+ * @typedef {import('../database/index.js').users.UserEntity & {
+ * group: string
+ * }} UserModel
+ */
+
+/**
+ * 
+ * @param {import('../database/index.js').users.UserEntity} user 
+ * @returns {UserModel}
+ */
+async function getGroupForUser(user) {
+    const group = await database.groups.getGroupById(user.groupId);
+    user['group'] = group.name;
+    return user;
+}
+
+async function getUserById(id) {
+    const user = await database.users.getUserById(id);
+    return user && await getGroupForUser(user);
+}
+
+export async function getUserByName(name) {
+    const user = await database.users.getUserByName(name);
+    return user && await getGroupForUser(user);
+}
+
+export async function getUserByEmail(email) {
+    const user = await database.users.getUserByEmail(email);
+    return user && await getGroupForUser(user);
+}
+
+export async function getUserByRefreshToken(refreshToken) {
+    const user = await database.users.getUserByRefreshToken(refreshToken);
+    return user && await getGroupForUser(user);
+}
+
+/**
+ * 
+ * @param {object} payload
+ * @param {string} payload.name
+ * @param {string} payload.password
+ * @param {string} payload.email
+ */
+export async function createUser(payload) {
+    const hashedPassword = await bcrypt.hash(payload.password, 12);
+    const userEntity = await database.users.createUser({
+        name: payload.name,
+        password: hashedPassword,
+        groupId: database.groups.BASIC_GROUP_IDS.registered,
+        email: payload.email
+    });
+    return await getGroupForUser(userEntity);
+}
+
+/**
  * 
  * @param {object} payload
  * @param {string} payload.identity
@@ -132,27 +140,35 @@ export async function login(payload) {
     }
 
     const isPasswordTheSame = await bcrypt.compare(payload.password, user.password);
-    if (isPasswordTheSame) {
+    if (!isPasswordTheSame) {
         throw new PasswordMismatchException();
     }
 
-    const refreshToken = await generateRefreshToken();
-    await database.users.updateUserById({
-        refreshToken,
-        lastRefreshTokenIssued: new Date(),
-        lastLogin: new Date()
-    });
+    if (!user.refreshToken) {
+        const refreshToken = await generateRefreshToken();
+        await database.users.updateUserById(user.id, {
+            refreshToken,
+            lastRefreshTokenIssued: new Date()
+        });
+        user.refreshToken = refreshToken;
+    }
+
     const accessToken = await generateAccessToken({
         id: user.id,
         name: user.name,
         group: user.group
     });
 
+    await database.users.updateUserById(user.id, {
+        lastAccessTokenIssued: new Date(),
+        lastLogin: new Date()
+    });
+
     return {
         id: user.id,
         name: user.name,
         group: user.group,
-        refreshToken,
+        refreshToken: user.refreshToken,
         accessToken
     };
 }
@@ -164,7 +180,7 @@ export async function login(payload) {
  * @param {string} payload.currentPassword
  * @param {string} payload.newPassword
  */
-export function changePassword(payload) {
+export async function changePassword(payload) {
     const user = await getUserById(payload.id);
     const isCurrentPasswordValid = await bcrypt.compare(user.password, payload.currentPassword);
     if (!isCurrentPasswordValid) {
@@ -184,14 +200,11 @@ export function changePassword(payload) {
 /**
  * 
  * @param {object} payload
- * @param {object} payload.id
  * @param {object} payload.refreshToken
  */
 export async function issueAccessToken(payload) {
-    const user = await getUserById(id);
-    if (payload.refreshToken !== user.refreshToken) {
-        throw new RefreshTokenMismatchException();
-    }
+    const user = await getUserByRefreshToken(payload.refreshToken);
+    if (!user) throw new InvalidRefreshTokenException();
 
     const accessToken = await generateAccessToken({
         id: user.id,
@@ -199,7 +212,7 @@ export async function issueAccessToken(payload) {
         group: user.group
     });
 
-    await database.users.updateUserById(id, {
+    await database.users.updateUserById(user.id, {
         lastAccessTokenIssued: new Date()
     });
 
