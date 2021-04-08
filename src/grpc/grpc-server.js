@@ -1,6 +1,7 @@
 import gRpcLibrary from '@grpc/grpc-js';
 import gRpcObject from './grpc-object.js';
 import * as authentication from './grpc-services/authentication.js';
+import * as authorization from './grpc-services/authorization.js';
 import logger from '../logger/index.js';
 import gRpc from '@grpc/grpc-js';
 /**
@@ -11,6 +12,8 @@ function asyncWrapper(func) {
     return function (...params) {
         func(...params)
             .catch(error => {
+                logger.error(error);
+
                 const call = params[0];
                 const callback = params[1];
                 if (callback) {
@@ -25,14 +28,34 @@ function asyncWrapper(func) {
                 } else {
                     // call.??
                 }
-                logger.error(error);
             });
     };
 }
 
+function syncWrapper(func) {
+    return function (...params) {
+        try {
+            func(...params);
+        } catch (error) {
+            logger.error(error);
+
+            try {
+                const callback = params[1];
+                if (callback) {
+                    callback({
+                        code: gRpc.status.INTERNAL,
+                        details: 'Internal error.'
+                    }, null);
+                }
+            } catch (callbackError) {
+                logger.error(callbackError);
+            }
+        }
+    }
+}
+
 const gRpcServer = new gRpcLibrary.Server();
-gRpcServer.addService(gRpcObject
-    .terraria_launcher.protos.services.authentication
+gRpcServer.addService(gRpcObject.terraria_launcher.protos.services.authentication
     .Authentication.service,
     {
         Register: asyncWrapper(authentication.register),
@@ -43,6 +66,12 @@ gRpcServer.addService(gRpcObject
         UpdateUser: asyncWrapper(authentication.updateUser),
         GetUserByName: asyncWrapper(authentication.getUserByName),
         GetUserByEmail: asyncWrapper(authentication.getUserByEmail)
+    }
+);
+gRpcServer.addService(gRpcObject.terraria_launcher.protos.services.authentication
+    .Authorization.service,
+    {
+        DoesGroupContainsPermission: syncWrapper(authorization.doesGroupContainsPermission)
     }
 );
 
