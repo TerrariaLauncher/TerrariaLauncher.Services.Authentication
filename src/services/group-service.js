@@ -19,6 +19,7 @@ export async function reloadPermissions() {
 }
 
 export function doesGroupHasPermission(group, permission) {
+    if (permission === '*') return true;
     return PERMISSION_LOOKUP[group]?.has(permission) ?? false;
 }
 

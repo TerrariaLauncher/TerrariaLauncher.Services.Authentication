@@ -15,7 +15,7 @@
     "database": {
         "host": "localhost",
         "port": 3306,
-        "name": "terraria_launcher",
+        "name": "terraria_launcher_authentication",
         "userName": "launcher",
         "password": "Th3B3stP@ssw0rd3v3r"
     },
