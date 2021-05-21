@@ -1,9 +1,10 @@
-import gRpcLibrary from '@grpc/grpc-js';
-import gRpcObject from './grpc-object.js';
+import grpc from '@grpc/grpc-js';
 import * as authentication from './grpc-services/authentication.js';
 import * as authorization from './grpc-services/authorization.js';
+import { AuthenticationService } from './generated-code/services/authentication/authentication_grpc_pb.cjs';
+import { AuthorizationService } from './generated-code/services/authentication/authorization_grpc_pb.cjs';
+
 import logger from '../logger/index.js';
-import gRpc from '@grpc/grpc-js';
 /**
  * 
  * @param {Promise<any>} func 
@@ -19,7 +20,7 @@ function asyncWrapper(func) {
                 if (callback) {
                     try {
                         callback({
-                            code: gRpc.status.INTERNAL,
+                            code: grpc.status.INTERNAL,
                             details: 'Internal error.'
                         }, null);
                     } catch (callbackError) {
@@ -43,7 +44,7 @@ function syncWrapper(func) {
                 const callback = params[1];
                 if (callback) {
                     callback({
-                        code: gRpc.status.INTERNAL,
+                        code: grpc.status.INTERNAL,
                         details: 'Internal error.'
                     }, null);
                 }
@@ -54,24 +55,21 @@ function syncWrapper(func) {
     }
 }
 
-const gRpcServer = new gRpcLibrary.Server();
-gRpcServer.addService(gRpcObject.terraria_launcher.protos.services.authentication
-    .Authentication.service,
+const gRpcServer = new grpc.Server();
+gRpcServer.addService(AuthenticationService,
     {
-        Register: asyncWrapper(authentication.register),
-        Login: asyncWrapper(authentication.login),
-        RenewAccessToken: asyncWrapper(authentication.renewAccessToken),
-        ParseAccessToken: asyncWrapper(authentication.verifyAccessToken),
-        ChangePassword: asyncWrapper(authentication.changePassword),
-        UpdateUser: asyncWrapper(authentication.updateUser),
-        GetUserByName: asyncWrapper(authentication.getUserByName),
-        GetUserByEmail: asyncWrapper(authentication.getUserByEmail)
+        register: asyncWrapper(authentication.register),
+        login: asyncWrapper(authentication.login),
+        renewAccessToken: asyncWrapper(authentication.renewAccessToken),
+        parseAccessToken: asyncWrapper(authentication.verifyAccessToken),
+        changePassword: asyncWrapper(authentication.changePassword),
+        updateUser: asyncWrapper(authentication.updateUser),
+        getUser: asyncWrapper(authentication.getUser),
     }
 );
-gRpcServer.addService(gRpcObject.terraria_launcher.protos.services.authentication
-    .Authorization.service,
+gRpcServer.addService(AuthorizationService,
     {
-        DoesGroupContainsPermission: syncWrapper(authorization.doesGroupContainsPermission)
+        doesGroupContainsPermission: syncWrapper(authorization.doesGroupContainsPermission)
     }
 );
 

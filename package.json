@@ -8,8 +8,8 @@
     "start": "npm run start:development",
     "start:development": "cross-env NODE_ENV=development node --preserve-symlinks ./src/app.js",
     "start:production": "cross-env NODE_ENV=production node --preserve-symlinks ./src/app.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "proto": "npx grpc_tools_node_protoc --proto_path=../TerrariaLauncher.Protos --js_out=import_style=commonjs,binary:./src/grpc/static-codegen --grpc_out=grpc_js:./src/grpc/static-codegen ../TerrariaLauncher.Protos/services/authentication/authentication.proto"
+    "generate-grpc-code": "node ./tools/generate-grpc-code.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +19,7 @@
     "@grpc/proto-loader": "^0.5.6",
     "bcrypt": "^5.0.1",
     "convict": "^6.0.1",
+    "google-protobuf": "^3.17.0",
     "jsonwebtoken": "^8.5.1",
     "mysql2": "^2.2.5",
     "terraria-launcher.commons": "file:../TerrariaLauncher.JSCommons",

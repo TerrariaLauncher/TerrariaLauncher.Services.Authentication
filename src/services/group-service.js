@@ -10,9 +10,15 @@ export async function reloadPermissions() {
     const groups = await database.groups.getAllGroups();
     for (const group of groups) {
         const permissions = await database.groups.getPermissionsByGroupId(group.id);
+        permissions.reverse();
+        
         const groupPermissions = new Set();
         for (const permission of permissions) {
-            groupPermissions.add(permission.name);
+            if (permission.allow) {
+                groupPermissions.add(permission.name);
+            } else {
+                groupPermissions.delete(permission.name);
+            }
         }
         PERMISSION_LOOKUP[group.id] = PERMISSION_LOOKUP[group.name] = groupPermissions;
     }

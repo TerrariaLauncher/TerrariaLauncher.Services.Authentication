@@ -27,8 +27,8 @@ export class InvalidRefreshTokenException extends Error {
     }
 }
 
-function isEmail(email) {
-    const emailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+const emailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.compile();
+export function isEmail(email) {
     return emailRegex.test(email);
 }
 
@@ -128,15 +128,22 @@ export async function createUser(payload) {
 /**
  * 
  * @param {object} payload
- * @param {string} payload.identity
+ * @param {string?} payload.name
+ * @param {string?} payload.email
  * @param {string} payload.password
  */
 export async function login(payload) {
     let user = null;
-    if (isEmail(payload.identity)) {
-        user = await getUserByEmail(payload.identity);
+    if (payload.name) {
+        user = await getUserByName(payload.name);
+    } else if (payload.email) {
+        user = await getUserByEmail(payload.email);
     } else {
-        user = await getUserByName(payload.identity);
+        return null;
+    }
+    
+    if (user == null) {
+        return null;
     }
 
     const isPasswordTheSame = await bcrypt.compare(payload.password, user.password);
