@@ -3,33 +3,24 @@ import * as database from '../database/index.js';
 /**
  * @type {Object<string, Set>}
  */
-const PERMISSION_LOOKUP = {};
-await reloadPermissions();
+const BASE_GROUP_LOOKUP = {};
+await loadGroupsWithBaseGroups();
 
-export async function reloadPermissions() {
+export async function loadGroupsWithBaseGroups() {
     const groups = await database.groups.getAllGroups();
     for (const group of groups) {
-        const permissions = await database.groups.getPermissionsByGroupId(group.id);
-        permissions.reverse();
-        
-        const groupPermissions = new Set();
-        for (const permission of permissions) {
-            if (permission.allow) {
-                groupPermissions.add(permission.name);
-            } else {
-                groupPermissions.delete(permission.name);
-            }
-        }
-        PERMISSION_LOOKUP[group.id] = PERMISSION_LOOKUP[group.name] = groupPermissions;
+        const groupWithBaseGroups = await database.groups.getGroupByIdWithBaseGroups(group.id);
+        const baseSet = new Set();
+        groupWithBaseGroups.forEach(group => baseSet.add(group.name));
+        BASE_GROUP_LOOKUP[group.name] = baseSet;
     }
 }
 
-export function doesGroupHasPermission(group, permission) {
-    if (permission === '*') return true;
-    return PERMISSION_LOOKUP[group]?.has(permission) ?? false;
+export function checkGroupIsBasedOn(group, baseGroup) {
+    if (baseGroup === '*') return true;
+    return BASE_GROUP_LOOKUP[group]?.has(baseGroup) ?? false;
 }
 
 export function getGroupById(id) {
-    database.groups.getGroupPermissionsByGroupId()
     return database.groups.getGroupById(id);
 }

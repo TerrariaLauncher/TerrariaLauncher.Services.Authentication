@@ -141,7 +141,7 @@ export async function login(payload) {
     } else {
         return null;
     }
-    
+
     if (user == null) {
         return null;
     }
@@ -209,21 +209,25 @@ export async function changePassword(payload) {
  * @param {object} payload
  * @param {object} payload.refreshToken
  */
-export async function issueAccessToken(payload) {
-    const user = await getUserByRefreshToken(payload.refreshToken);
+export async function issueAccessToken({ refreshToken }) {
+    const user = await getUserByRefreshToken(refreshToken);
     if (!user) throw new InvalidRefreshTokenException();
 
-    const accessToken = await generateAccessToken({
+    const payload = {
         id: user.id,
         name: user.name,
         group: user.group
-    });
+    };
+    const accessToken = await generateAccessToken(payload);
 
     await database.users.updateUserById(user.id, {
         lastAccessTokenIssued: new Date()
     });
 
-    return accessToken;
+    return {
+        payload,
+        accessToken
+    };
 }
 
 /**

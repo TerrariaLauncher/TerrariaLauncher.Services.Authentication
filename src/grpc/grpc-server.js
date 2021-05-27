@@ -69,7 +69,7 @@ gRpcServer.addService(AuthenticationService,
 );
 gRpcServer.addService(AuthorizationService,
     {
-        doesGroupContainsPermission: syncWrapper(authorization.doesGroupContainsPermission)
+        isGroupAllowed: syncWrapper(authorization.isGroupAllowed)
     }
 );
 

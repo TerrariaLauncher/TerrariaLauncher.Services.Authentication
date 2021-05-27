@@ -10,7 +10,11 @@ import authenticationPbMessages from '../generated-code/services/authentication/
  */
 export async function register(call, callback) {
     try {
-        const user = await userService.createUser(call.request);
+        const user = await userService.createUser({
+            name: call.request.getName(),
+            password: call.request.getPassword(),
+            email: call.request.getEmail()
+        });
         const response = new authenticationPbMessages.RegisterResponse();
         response.setId(user.id);
         response.setName(user.name);
@@ -95,11 +99,14 @@ export async function login(call, callback) {
  */
 export async function renewAccessToken(call, callback) {
     try {
-        const accessToken = await userService.issueAccessToken({
+        const { accessToken, payload } = await userService.issueAccessToken({
             refreshToken: call.request.getRefreshToken()
         });
 
         const response = new authenticationPbMessages.RenewAccessTokenResponse();
+        response.setId(payload.id);
+        response.setName(payload.name);
+        response.setGroup(payload.group);
         response.setAccessToken(accessToken);
         callback(null, response);
     } catch (error) {
@@ -152,10 +159,10 @@ export async function getUser(call, callback) {
     let user = null;
     switch (call.request.getIdentityCase()) {
         case authenticationPbMessages.GetUserRequest.IdentityCase.NAME:
-            user = await userService.getUserByName(call.request.name);
+            user = await userService.getUserByName(call.request.getName());
             break;
         case authenticationPbMessages.GetUserRequest.IdentityCase.EMAIL:
-            user = await userService.getUserByEmail(call.request.email);
+            user = await userService.getUserByEmail(call.request.getEmail());
             break;
         case authenticationPbMessages.GetUserRequest.IdentityCase.IDENTITY_NOT_SET:
         default:
@@ -166,7 +173,7 @@ export async function getUser(call, callback) {
     }
 
     if (!user) {
-        callback({
+        return callback({
             code: gRpc.status.NOT_FOUND,
             details: `Could not find any user with provided identity.`
         });
