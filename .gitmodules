@@ -1,0 +1,3 @@
+[submodule "references/TerrariaLauncher.Protos"]
+	path = references/TerrariaLauncher.Protos
+	url = git@github.com:TerrariaLauncher/TerrariaLauncher.Protos.git
